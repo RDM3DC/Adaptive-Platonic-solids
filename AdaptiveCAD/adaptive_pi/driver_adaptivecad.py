@@ -9,6 +9,7 @@ AdaptiveCAD driver (PNG-only):
 Wire the 'KernelAdapter' methods to your AdaptiveCAD kernel.
 """
 
+import os
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -75,6 +76,7 @@ class KernelAdapter:
         cbar.set_label("K (curvature)")
         ax.set_title(title)
         fig.tight_layout()
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
         fig.savefig(outfile, dpi=220, bbox_inches="tight")
         plt.close(fig)
 
@@ -138,6 +140,34 @@ def gauss_bonnet_normalize(mesh, K_face: np.ndarray, target_chi: int = -4) -> np
     s = target / current
     return K_face * s
 
+
+def rho_from_K(point, K_of_point, mode="tempered", r_v=1.0, r_f=0.8, c=None):
+    """
+    Compute ρ at a point given K(point).
+
+    mode:
+      - "tempered": ρ ≈ 1 + c·K  (requires c; if None, uses (r_f^2 - r_v^2)/6)
+      - "exact":    ρ = [S_K(r_v)/r_v] / [S_K(r_f)/r_f]  with sin/sinh laws
+    """
+    K = K_of_point(point)
+    if mode == "tempered":
+        if c is None:
+            c = (r_f*r_f - r_v*r_v)/6.0
+        return 1.0 + c * K
+    else:  # exact
+        if abs(K) < 1e-12:
+            return 1.0
+        if K > 0:
+            t = math.sqrt(K)
+            num = math.sin(t * r_v) / (t * r_v)
+            den = math.sin(t * r_f) / (t * r_f)
+            return num / den
+        else:
+            t = math.sqrt(-K)
+            num = math.sinh(t * r_v) / (t * r_v)
+            den = math.sinh(t * r_f) / (t * r_f)
+            return num / den
+
 # ------- 4) CLI-style main -------
 def main():
     ka = KernelAdapter()
@@ -154,9 +184,21 @@ def main():
     # Enforce Gauss–Bonnet for g=3 → χ=-4
     K_face = gauss_bonnet_normalize(mesh, K_face, target_chi=-4)
 
-    # Render PNG heatmap
+    # Render PNG heatmap of curvature
     ka.render_face_scalar(mesh, K_face, title="Adaptive-π: per-face K (g=3, {3,7})",
                           outfile="outputs/adaptive_pi_K_genus3.png")
+
+    # Example: recover ρ from K using a tempered linearization
+    MODE = "tempered"   # or "exact"
+    R_V, R_F = 2.09, 0.8
+    C_CONST = -0.623
+    bary = mesh.V[mesh.F].mean(axis=1)
+    rho_faces = np.array([
+        rho_from_K(p, lambda _p, k=K_face[idx]: k, mode=MODE, r_v=R_V, r_f=R_F, c=C_CONST)
+        for idx, p in enumerate(bary)
+    ])
+    ka.render_face_scalar(mesh, rho_faces, title="Adaptive-π: ρ from K",
+                          outfile="outputs/adaptive_pi_rho_genus3.png")
 
 if __name__ == "__main__":
     main()
