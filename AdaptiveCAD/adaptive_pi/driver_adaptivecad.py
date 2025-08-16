@@ -1,7 +1,7 @@
 """
 AdaptiveCAD driver (PNG-only):
 - Assign a {3,7} combinatorics on a genus-3 surface
-- Choose a rho(x) field (constant 1.20 by default)
+- Choose a rho(x) field (CLI: --rho, default 1.7)
 - Solve per-face K from rho using exact formulas
 - Enforce Gauss–Bonnet sum_f K_f A_f = -8π (g=3)
 - Render per-face K as a heatmap
@@ -11,6 +11,7 @@ Wire the 'KernelAdapter' methods to your AdaptiveCAD kernel.
 
 import os
 import math
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Callable, Dict, Tuple
@@ -170,11 +171,29 @@ def rho_from_K(point, K_of_point, mode="tempered", r_v=1.0, r_f=0.8, c=None):
 
 # ------- 4) CLI-style main -------
 def main():
+    parser = argparse.ArgumentParser(description="AdaptiveCAD driver (PNG-only)")
+    parser.add_argument(
+        "--mode",
+        choices=["tempered", "exact"],
+        default="tempered",
+        help="ρ recovery mode from curvature",
+    )
+    parser.add_argument(
+        "--rho",
+        type=float,
+        default=1.7,
+        help="constant ρ for the mesh (must lie in [1.3, 2.4])",
+    )
+    args = parser.parse_args()
+
+    if not (1.3 <= args.rho <= 2.4):
+        parser.error("--rho must be in [1.3, 2.4]")
+
     ka = KernelAdapter()
     mesh = ka.load_genus3_mesh()
 
-    # Pick your field: constant ρ(x)=1.20 is a good start for {3,7}.
-    rho_fn = constant_field(1.20)
+    # Pick your field: constant ρ(x) provided via CLI.
+    rho_fn = constant_field(args.rho)
     # Scales: typical choice for hyperbolic branch: r_v=1.0, r_f=0.8
     scales_fn = constant_scales(r_v=1.0, r_f=0.8)
 
@@ -185,20 +204,37 @@ def main():
     K_face = gauss_bonnet_normalize(mesh, K_face, target_chi=-4)
 
     # Render PNG heatmap of curvature
-    ka.render_face_scalar(mesh, K_face, title="Adaptive-π: per-face K (g=3, {3,7})",
-                          outfile="outputs/adaptive_pi_K_genus3.png")
+    ka.render_face_scalar(
+        mesh,
+        K_face,
+        title="Adaptive-π: per-face K (g=3, {3,7})",
+        outfile="outputs/adaptive_pi_K_genus3.png",
+    )
 
-    # Example: recover ρ from K using a tempered linearization
-    MODE = "tempered"   # or "exact"
+    # Example: recover ρ from K using selected mode
     R_V, R_F = 2.09, 0.8
     C_CONST = -0.623
     bary = mesh.V[mesh.F].mean(axis=1)
-    rho_faces = np.array([
-        rho_from_K(p, lambda _p, k=K_face[idx]: k, mode=MODE, r_v=R_V, r_f=R_F, c=C_CONST)
-        for idx, p in enumerate(bary)
-    ])
-    ka.render_face_scalar(mesh, rho_faces, title="Adaptive-π: ρ from K",
-                          outfile="outputs/adaptive_pi_rho_genus3.png")
+    rho_faces = np.array(
+        [
+            rho_from_K(
+                p,
+                lambda _p, k=K_face[idx]: k,
+                mode=args.mode,
+                r_v=R_V,
+                r_f=R_F,
+                c=C_CONST,
+            )
+            for idx, p in enumerate(bary)
+        ]
+    )
+    ka.render_face_scalar(
+        mesh,
+        rho_faces,
+        title="Adaptive-π: ρ from K",
+        outfile="outputs/adaptive_pi_rho_genus3.png",
+    )
+
 
 if __name__ == "__main__":
     main()
