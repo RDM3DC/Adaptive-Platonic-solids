@@ -1,0 +1,10 @@
+Klein quartic (3, 7) triangulation counts
+----------------------------------------
+Faces (triangles) F = 56
+Edges            E = 84
+Vertices        V = 24
+
+Checks:
+  3F = 2E  ->  3*56 = 2*84  ✓
+  3F = 7V  ->  3*56 = 7*24  ✓
+  Euler χ  = V - E + F = -4  (expected χ = 2-2g = -4 for g=3) ✓
