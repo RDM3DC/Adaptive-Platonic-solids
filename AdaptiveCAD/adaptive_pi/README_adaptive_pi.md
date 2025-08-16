@@ -16,7 +16,7 @@ enforces Gauss–Bonnet for genus 3, and renders a PNG.
 cd AdaptiveCAD
 python -m venv .venv && source .venv/bin/activate
 pip install numpy matplotlib
-python adaptive_pi/driver_adaptivecad.py
+python adaptive_pi/driver_adaptivecad.py --mode tempered --rho 1.7
 # -> outputs/adaptive_pi_K_genus3.png
 
 Wiring to your kernel
@@ -26,7 +26,8 @@ Replace the methods in KernelAdapter with your actual AdaptiveCAD API calls:
 • render_face_scalar() → your renderer to a PNG.
 
 Tweaks
-• Change rho_fn for spatially varying ρ(x).
+• Set `--rho` to pick a constant ρ in [1.3, 2.4].
+• Pass `--mode exact` to recover ρ from K via the exact sinh/sin laws (default `tempered`).
 • Switch branch to "spherical" and set r_f > r_v if you want a spherical variant.
 • Use your {3,7} combinatorics if you have it; this driver is geometry-first and PNG-only.
 
