@@ -35,6 +35,8 @@ At `ρ = 1.20` the normalized surplus is `δ/(2π_f) = 1.20 − 1.1667 ≈ 0.033
 
 Outputs are written to `outputs/`.
 
+For a CAD-focused implementation, see [AdaptiveCAD](https://github.com/RDM3DC/AdaptiveCAD).
+
 ---
 
 ## Install
